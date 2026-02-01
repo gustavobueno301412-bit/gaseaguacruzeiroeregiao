@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 App Gás e Água Cruzeiro e Região 💧</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #0047AB; color: white; padding-bottom: 80px; }
+    .header { background: #0047AB; padding: 15px; text-align: center; }
+    .banner-container { width: 100%; background: white; text-align: center; }
+    #bannerImg { width: 100%; height: 200px; object-fit: contain; transition: opacity 0.5s ease; }
+    .busca-container { padding: 10px 15px; background: #0047AB; }
+    .input-busca { width: 100%; padding: 12px; border-radius: 25px; border: none; font-size: 16px; outline: none; box-sizing: border-box; }
+    .lista { padding: 15px; }
+    .card { display: flex; background: white; border-radius: 12px; margin-bottom: 15px; color: #333; overflow: hidden; }
+    .foto-loja { width: 110px; height: 150px; object-fit: cover; }
+    .info { padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .nome-loja { color: #0047AB; font-weight: bold; font-size: 18px; margin-bottom: 2px; }
+    .nota-loja { font-weight: bold; font-size: 14px; color: #333; }
+    .endereco-loja { font-weight: bold; font-size: 13px; color: #333; }
+    .horario-loja { color: #28a745; font-size: 13px; font-weight: bold; }
+    .info-loja { color: #dc3545; font-size: 12px; font-weight: bold; }
+    #tela-produtos, #tela-carrinho, #tela-final { display: none; padding: 15px; background: #0047AB; }
+    .card-produto { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; color: #333; display: flex; align-items: center; }
+    .img-p { width: 70px; height: 70px; margin-right: 15px; object-fit: contain; }
+    .campo { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; font-size: 16px; }
+    .escondido { display: none; }
+    #mapa-retirada { height: 250px; width: 100%; border-radius: 10px; margin-top: 15px; border: 2px solid white; display: block; }
+    .resumo-final { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed white; text-align: center; line-height: 1.6; }
+    .btn-flutuante { position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; display: none; z-index: 1000; }
+    .btn-remover { border: none; background: none; color: #dc3545; font-size: 24px; cursor: pointer; padding: 5px; margin-left: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="tela-home">
+  <div class="header"><h1>🔥 App Gás e Água Cruzeiro e Região 💧</h1></div>
+  <div class="banner-container"><img id="bannerImg" src=""></div>
+  <div class="busca-container">
+    <input type="text" id="inputBusca" class="input-busca" placeholder="Buscar por loja ou rua..." onkeyup="filtrarLojas()">
+  </div>
+  <div id="lista-lojas" class="lista"></div>
+</div>
+
+<div id="tela-produtos">
+  <button onclick="voltar()">⬅ VOLTAR</button>
+  <div id="cabecalho-loja" style="text-align:center; padding:20px;"></div>
+  <div id="lista-itens"></div>
+</div>
+
+<div id="tela-carrinho">
+  <button onclick="irProdutos()">⬅ VOLTAR</button>
+  <h2 style="text-align:center">🛒 Meu Carrinho</h2>
+  <div id="itens-carrinho"></div>
+  <div id="total-carrinho" style="font-size:20px; font-weight:bold; margin: 20px 0; text-align:right; padding-right: 10px;"></div>
+  <button style="background:#28a745; color:white; width:100%; padding:15px; border:none; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="abrirFinal()">PROSSEGUIR</button>
+</div>
+
+<div id="tela-final">
+  <button onclick="abrirCarrinho()">⬅ VOLTAR</button>
+  <h2 style="text-align:center">✅ Finalizar Pedido</h2>
+  <input type="text" id="nome" class="campo" placeholder="Seu Nome">
+  <select id="metodo" class="campo" onchange="alternarMetodo(this.value)">
+    <option value="Entrega">Receber em Casa</option>
+    <option value="Retirada">Vou Retirar na Loja</option>
+  </select>
+  <div id="div-endereco">
+    <input type="text" id="rua" class="campo" placeholder="Nome da Rua">
+    <input type="text" id="numero" class="campo" placeholder="Número">
+    <input type="text" id="bairro" class="campo" placeholder="Bairro">
+    <input type="text" id="ref" class="campo" placeholder="Referência">
+  </div>
+  <div id="div-retirada" class="escondido" style="padding: 10px 0;">
+    <p>📍 Retirar em: <br><span id="endLojaTxt" style="font-weight:bold;"></span></p>
+    <div id="mapa-retirada"></div>
+  </div>
+  <select id="pagto" class="campo" onchange="alternarCamposPgto(this.value)">
+    <option value="Pix">Pix</option>
+    <option value="Dinheiro">Dinheiro</option>
+    <option value="Cartão">Cartão</option>
+    <option value="Convênio">Convênio</option>
+  </select>
+  <input type="text" id="troco" class="campo escondido" placeholder="Troco para quanto?">
+  <input type="text" id="qualConvenio" class="campo escondido" placeholder="Nome do Convênio">
+  <div id="resumo-valores" class="resumo-final"></div>
+  <button style="background:#28a745; color:white; width:100%; padding:15px; border:none; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="enviarZap()">ENVIAR NO WHATSAPP</button>
+</div>
+
+<button id="btnFlutuante" class="btn-flutuante" onclick="abrirCarrinho()">Ver Carrinho (<span id="count">0</span>)</button>
+
+<script>
+let lojas = [], produtos = [], carrinho = [], banners = [], mapa = null, bIdx = 0;
+let zapLoja = "", taxaLoja = 0, nomeLoja = "", endLoja = "", totalItens = 0;
+
+async function carregar() {
+  const rL = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRBmwx-MDLLTuHAbXQ1hYO5GWZ05CsGqgCXtFmc_BWsFf0FCnR-17iEvtxQejGdOkdBy76V0L6whoC2/pub?gid=0&output=csv&t="+Date.now());
+  const rP = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRBmwx-MDLLTuHAbXQ1hYO5GWZ05CsGqgCXtFmc_BWsFf0FCnR-17iEvtxQejGdOkdBy76V0L6whoC2/pub?gid=230292162&output=csv&t="+Date.now());
+  const tL = await rL.text(), tP = await rP.text();
+  const limpar = (r) => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, ''));
+  lojas = tL.split(/\r?\n/).slice(1).map(limpar).filter(l => l.length > 5).sort(() => Math.random() - 0.5);
+  produtos = tP.split(/\r?\n/).slice(1).map(limpar);
+  banners = lojas.map(l => l[10]).filter(b => b && b.includes("http"));
+  if(banners.length) {
+    const imgB = document.getElementById('bannerImg');
+    imgB.src = banners[0];
+    setInterval(() => {
+      bIdx = (bIdx + 1) % banners.length;
+      imgB.style.opacity = 0.5;
+      setTimeout(() => { imgB.src = banners[bIdx]; imgB.style.opacity = 1; }, 200);
+    }, 4000);
+  }
+  renderizarLojas(lojas);
+}
+
+function renderizarLojas(lista) {
+  let div = document.getElementById('lista-lojas'); div.innerHTML = '';
+  lista.forEach(l => {
+    div.innerHTML += `<div class="card" onclick="verProdutos('${l[0]}','${l[1]}','${l[9]}','${l[4]}','${l[6]}','${l[8]}')">
+      <img src="${l[9]}" class="foto-loja"><div class="info"><span class="nome-loja">${l[1]}</span><span class="nota-loja">${l[2]}</span><span class="endereco-loja">${l[8]}</span><span class="horario-loja">${l[3]}</span><span class="info-loja">${l[7]}</span><span style="color:#28a745;font-weight:bold;margin-top:5px;">Entrega: R$ ${l[6]}</span></div></div>`;
+  });
+}
+
+function filtrarLojas() {
+  const busca = document.getElementById('inputBusca').value.toLowerCase();
+  const filtradas = lojas.filter(l => l[1].toLowerCase().includes(busca) || l[8].toLowerCase().includes(busca));
+  renderizarLojas(filtradas);
+}
+
+function verProdutos(id, nome, foto, zap, taxa, endereco) {
+  zapLoja = zap.replace(/\D/g,''); taxaLoja = parseFloat(taxa.replace(',','.')) || 0; nomeLoja = nome; endLoja = endereco;
+  document.getElementById('tela-home').style.display = 'none';
+  document.getElementById('tela-produtos').style.display = 'block';
+  document.getElementById('cabecalho-loja').innerHTML = `<img src="${foto}" style="width:120px;height:120px;border-radius:50%;border:3px solid white;background:white;object-fit:cover;"><h3>${nome}</h3>`;
+  let div = document.getElementById('lista-itens'); div.innerHTML = '';
+  produtos.filter(p => p[0] === id).forEach(p => {
+    div.innerHTML += `<div class="card-produto"><img src="${p[5]}" class="img-p"><div style="flex:1"><b>${p[3]}</b><br><small>${p[2]}</small><br>R$ ${p[4]}<div style="display:flex;align-items:center;gap:10px;margin:10px 0;"><button onclick="let s=this.nextElementSibling;s.innerText=Math.max(1,parseInt(s.innerText)-1)">-</button><span>1</span><button onclick="let s=this.previousElementSibling;s.innerText=parseInt(s.innerText)+1">+</button></div><button style="background:#0047AB;color:white;border:none;padding:10px;width:100%;border-radius:8px;font-weight:bold;cursor:pointer;" onclick="addCarrinho('${p[3]}','${p[4]}','${p[5]}','${p[2]}',this)">ADICIONAR</button></div></div>`;
+  });
+}
+
+function addCarrinho(n, p, f, m, btn) {
+  let qtd = parseInt(btn.parentElement.querySelector('span').innerText);
+  carrinho.push({ nome: n, preco: parseFloat(p.replace(',','.')) || 0, qtd, foto: f, marca: m });
+  document.getElementById('count').innerText = carrinho.length;
+  document.getElementById('btnFlutuante').style.display = 'block';
+  btn.style.background = "#28a745"; btn.innerText = "ADICIONADO";
+  setTimeout(() => { btn.style.background = "#0047AB"; btn.innerText = "ADICIONAR"; }, 800);
+}
+
+function abrirCarrinho() {
+  document.querySelectorAll('#tela-home, #tela-produtos, #tela-final').forEach(t => t.style.display = 'none');
+  document.getElementById('tela-carrinho').style.display = 'block';
+  let div = document.getElementById('itens-carrinho'); div.innerHTML = ''; totalItens = 0;
+  carrinho.forEach((i, idx) => {
+    totalItens += (i.preco * i.qtd);
+    div.innerHTML += `<div class="card-produto"><img src="${i.foto}" class="img-p"><div style="flex:1"><b>${i.qtd}x ${i.nome}</b><br><small style="display:block;margin-top:4px;">${i.marca}</small></div><div style="text-align:right"><b>R$ ${(i.preco*i.qtd).toFixed(2)}</b><br><button class="btn-remover" onclick="carrinho.splice(${idx},1);abrirCarrinho()" title="Remover">🗑️</button></div></div>`;
+  });
+  document.getElementById('total-carrinho').innerText = "Subtotal: R$ " + totalItens.toFixed(2).replace('.',',');
+}
+
+function alternarMetodo(v) {
+  document.getElementById('div-endereco').className = (v === 'Entrega') ? '' : 'escondido';
+  document.getElementById('div-retirada').className = (v === 'Retirada') ? '' : 'escondido';
+  if(v === 'Retirada') {
+    document.getElementById('endLojaTxt').innerText = endLoja;
+    // Ajuste aqui: espera a div aparecer para carregar o mapa
+    setTimeout(carregarMapa, 300);
+  }
+  atualizarResumo();
+}
+
+async function carregarMapa() {
+  if (mapa) { mapa.remove(); mapa = null; }
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endLoja + ", Cruzeiro, SP")}`);
+    const data = await res.json();
+    if(data.length > 0) {
+      mapa = L.map('mapa-retirada').setView([data[0].lat, data[0].lon], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+      L.marker([data[0].lat, data[0].lon]).addTo(mapa);
+      setTimeout(() => { mapa.invalidateSize(); }, 200);
+    }
+  } catch(e) { console.error("Erro mapa:", e); }
+}
+
+function alternarCamposPgto(v) {
+  document.getElementById('troco').className = (v === 'Dinheiro') ? 'campo' : 'escondido';
+  document.getElementById('qualConvenio').className = (v === 'Convênio') ? 'campo' : 'escondido';
+}
+
+function atualizarResumo() {
+  let m = document.getElementById('metodo').value;
+  let t = (m === 'Entrega') ? taxaLoja : 0;
+  document.getElementById('resumo-valores').innerHTML = `📦 Produtos: R$ ${totalItens.toFixed(2)}<br>🛵 Entrega: R$ ${t.toFixed(2)}<br><b style="font-size:18px;">💰 TOTAL: R$ ${(totalItens+t).toFixed(2).replace('.',',')}</b>`;
+}
+
+function enviarZap() {
+  const n = document.getElementById('nome').value, r = document.getElementById('rua').value, num = document.getElementById('numero').value, b = document.getElementById('bairro').value, ref = document.getElementById('ref').value, p = document.getElementById('pagto').value, met = document.getElementById('metodo').value;
+  const tr = document.getElementById('troco').value, cv = document.getElementById('qualConvenio').value;
+  if(!n) return alert("Preencha seu nome!");
+  let taxa = (met === 'Entrega') ? taxaLoja : 0;
+ 
+  let msg = `*NOVO PEDIDO PELO APP*\n\n`;
+  msg += `*Cliente:* ${n}\n`;
+  msg += `*Metodo:* ${met}\n`;
+  if(met === 'Entrega') {
+    msg += `*Endereco:* ${r}, ${num}\n`;
+    msg += `*Bairro:* ${b}\n`;
+    if(ref) msg += `*Referencia:* ${ref}\n`;
+  }
+  msg += `*Pagamento:* ${p}\n`;
+  if(p === 'Dinheiro' && tr) msg += `*Troco para:* R$ ${tr}\n`;
+  if(p === 'Convênio' && cv) msg += `*Convenio:* ${cv}\n`;
+  msg += `\n*ITENS:*\n`;
+  carrinho.forEach(i => msg += `- ${i.qtd}x ${i.nome} (${i.marca}): R$ ${(i.preco*i.qtd).toFixed(2)}\n`);
+  if(met === 'Entrega') msg += `\n*Taxa de Entrega:* R$ ${taxa.toFixed(2).replace('.',',')}`;
+  msg += `\n\n*TOTAL: R$ ${(totalItens + taxa).toFixed(2).replace('.',',')}*`;
+ 
+  window.open(`https://wa.me/55${zapLoja}?text=${encodeURIComponent(msg)}`);
+}
+
+function abrirFinal() {
+  document.getElementById('tela-carrinho').style.display = 'none';
+  document.getElementById('tela-final').style.display = 'block';
+  atualizarResumo();
+}
+function voltar() { document.getElementById('tela-home').style.display = 'block'; document.getElementById('tela-produtos').style.display = 'none'; }
+function irProdutos() { document.getElementById('tela-carrinho').style.display = 'none'; document.getElementById('tela-produtos').style.display = 'block'; }
+carregar();
+</script>
+</body>
+</html>
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+
+ 
+
+
+ 
+
+
+ 
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+ 
+
+
+
+ 
+
+
+ 
+
+
+ 
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+
+ 
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+ 
+
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+
+ 
