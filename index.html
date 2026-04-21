@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🔥 App Gás e Água Cruzeiro e Região 💧</title>
+  <title>🔥 Link Up App Gás e Água 💧</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #0047AB; color: white; padding-bottom: 80px; }
     .header { background: #0047AB; padding: 15px; text-align: center; }
-    .banner-container { width: 100%; background: white; text-align: center; }
-    #bannerImg { width: 100%; height: 200px; object-fit: contain; transition: opacity 0.5s ease; }
+   
+    .banner-container { width: 100%; background: white; overflow: hidden; position: relative; }
+    .banner-wrapper { display: flex; transition: transform 0.5s ease-in-out; width: 100%; }
+    .banner-wrapper img { width: 100%; height: 200px; object-fit: contain; flex-shrink: 0; }
+   
     .busca-container { padding: 10px 15px; background: #0047AB; }
     .input-busca { width: 100%; padding: 12px; border-radius: 25px; border: none; font-size: 16px; outline: none; box-sizing: border-box; }
     .lista { padding: 15px; }
@@ -22,26 +25,95 @@
     .endereco-loja { font-weight: bold; font-size: 13px; color: #333; }
     .horario-loja { color: #28a745; font-size: 13px; font-weight: bold; }
     .info-loja { color: #dc3545; font-size: 12px; font-weight: bold; }
+   
     #tela-produtos, #tela-carrinho, #tela-final { display: none; padding: 15px; background: #0047AB; }
     .card-produto { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; color: #333; display: flex; align-items: center; }
     .img-p { width: 70px; height: 70px; margin-right: 15px; object-fit: contain; }
     .campo { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; font-size: 16px; }
     .escondido { display: none; }
+   
     #mapa-retirada { height: 250px; width: 100%; border-radius: 10px; margin-top: 15px; border: 2px solid white; display: block; }
     .resumo-final { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed white; text-align: center; line-height: 1.6; }
-    .btn-flutuante { position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; display: none; z-index: 1000; }
+   
+    .btn-flutuante {
+      position: fixed; right: 20px; bottom: 20px;
+      background: #28a745; color: white; border: none;
+      padding: 15px 25px; border-radius: 30px; font-weight: bold;
+      font-size: 18px; display: none; z-index: 1000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer;
+    }
+   
+    .btn-anuncie {
+      position: fixed; right: 20px; bottom: 90px;
+      background: #ff8c00; color: white; border: none;
+      padding: 12px 20px; border-radius: 30px; font-weight: bold;
+      font-size: 14px; z-index: 1000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer;
+    }
+
+    .modal {
+      display: none; position: fixed; z-index: 2000; left: 0; top: 0;
+      width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+      overflow-y: auto; padding-top: 20px;
+    }
+    .modal-content {
+      background: #fefefe; margin: auto; padding: 20px;
+      border-radius: 15px; width: 90%; max-width: 500px; color: #333;
+    }
+    .btn-modal { padding: 12px; border-radius: 8px; border: none; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+   
+    .item-cadastro-prod { display: flex; gap: 5px; margin-bottom: 5px; }
     .btn-remover { border: none; background: none; color: #dc3545; font-size: 24px; cursor: pointer; padding: 5px; margin-left: 10px; }
   </style>
 </head>
 <body>
 
 <div id="tela-home">
-  <div class="header"><h1>🔥 App Gás e Água Cruzeiro e Região 💧</h1></div>
-  <div class="banner-container"><img id="bannerImg" src=""></div>
+  <div class="header"><h1>🔥 Link Up App Gás e Água 💧</h1></div>
+  <div class="banner-container">
+    <div id="bannerWrapper" class="banner-wrapper"></div>
+  </div>
   <div class="busca-container">
     <input type="text" id="inputBusca" class="input-busca" placeholder="Buscar por loja ou rua..." onkeyup="filtrarLojas()">
   </div>
   <div id="lista-lojas" class="lista"></div>
+  <button class="btn-anuncie" onclick="abrirPerguntaCadastro()">📢 Anuncie Aqui</button>
+</div>
+
+<div id="modalCadastro" class="modal">
+  <div class="modal-content">
+    <div id="pergunta-inicial">
+      <h3 style="text-align:center">Deseja anunciar seus produtos no Link Up?</h3>
+      <button class="btn-modal" style="background:#28a745; color:white;" onclick="exibirFicha()">SIM, QUERO ANUNCIAR</button>
+      <button class="btn-modal" style="background:#dc3545; color:white;" onclick="fecharModal()">NÃO, SOU CLIENTE</button>
+    </div>
+   
+    <div id="ficha-cadastro" class="escondido">
+      <h3 style="text-align:center; color:#0047AB">Ficha de Cadastro</h3>
+      <input type="text" id="cad-nome" class="campo" style="border:1px solid #ccc" placeholder="Seu Nome">
+      <input type="text" id="cad-loja" class="campo" style="border:1px solid #ccc" placeholder="Nome do Estabelecimento">
+      <input type="text" id="cad-end" class="campo" style="border:1px solid #ccc" placeholder="Endereço Completo">
+      <input type="text" id="cad-seg-sex" class="campo" style="border:1px solid #ccc" placeholder="Horário Seg a Sex">
+      <input type="text" id="cad-sab" class="campo" style="border:1px solid #ccc" placeholder="Horário Sábado">
+      <input type="text" id="cad-dom" class="campo" style="border:1px solid #ccc" placeholder="Horário Domingo">
+      <input type="text" id="cad-taxa" class="campo" style="border:1px solid #ccc" placeholder="Taxa de Entrega">
+     
+      <div id="area-produtos-cadastro" style="margin-top:10px;">
+        <label><b>Produtos e Preços:</b></label>
+        <div id="lista-produtos-cadastro">
+            <div class="item-cadastro-prod">
+                <input type="text" class="campo cad-p-nome" style="border:1px solid #ccc; margin:0" placeholder="Produto">
+                <input type="text" class="campo cad-p-preco" style="border:1px solid #ccc; margin:0; width:100px" placeholder="R$">
+            </div>
+        </div>
+        <button type="button" onclick="addLinhaProduto()" style="background:#0047AB; color:white; border:none; padding:8px; border-radius:5px; width:100%; margin-top:5px; font-weight:bold; cursor:pointer">+ Adicionar Produto</button>
+      </div>
+
+      <textarea id="cad-obs" class="campo" style="border:1px solid #ccc; height:60px; margin-top:15px" placeholder="Informações Adicionais (Ex: Referência)"></textarea>
+      <button class="btn-modal" style="background:#28a745; color:white;" onclick="enviarCadastro()">ENVIAR CADASTRO</button>
+      <button class="btn-modal" style="background:#ccc;" onclick="fecharModal()">CANCELAR</button>
+    </div>
+  </div>
 </div>
 
 <div id="tela-produtos">
@@ -77,10 +149,11 @@
     <div id="mapa-retirada"></div>
   </div>
   <select id="pagto" class="campo" onchange="alternarCamposPgto(this.value)">
-    <option value="Pix">Pix</option>
-    <option value="Dinheiro">Dinheiro</option>
-    <option value="Cartão">Cartão</option>
-    <option value="Convênio">Convênio</option>
+    <option value="Pix">💳 Pix</option>
+    <option value="Dinheiro">💰 Dinheiro</option>
+    <option value="Cartão">💳 Cartão</option>
+    <option value="Convênio">🤝🏻 Convênio</option>
+    <option value="Gás do Povo">🙋🏻‍♂️ Gás do Povo</option>
   </select>
   <input type="text" id="troco" class="campo escondido" placeholder="Troco para quanto?">
   <input type="text" id="qualConvenio" class="campo escondido" placeholder="Nome do Convênio">
@@ -88,11 +161,57 @@
   <button style="background:#28a745; color:white; width:100%; padding:15px; border:none; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="enviarZap()">ENVIAR NO WHATSAPP</button>
 </div>
 
-<button id="btnFlutuante" class="btn-flutuante" onclick="abrirCarrinho()">Ver Carrinho (<span id="count">0</span>)</button>
+<button id="btnFlutuante" class="btn-flutuante" onclick="abrirCarrinho()">🛒 Ver Carrinho (<span id="count">0</span>)</button>
 
 <script>
 let lojas = [], produtos = [], carrinho = [], banners = [], mapa = null, bIdx = 0;
 let zapLoja = "", taxaLoja = 0, nomeLoja = "", endLoja = "", totalItens = 0;
+
+function abrirPerguntaCadastro() {
+  document.getElementById('modalCadastro').style.display = 'block';
+  document.getElementById('pergunta-inicial').className = '';
+  document.getElementById('ficha-cadastro').className = 'escondido';
+}
+function fecharModal() { document.getElementById('modalCadastro').style.display = 'none'; }
+function exibirFicha() {
+  document.getElementById('pergunta-inicial').className = 'escondido';
+  document.getElementById('ficha-cadastro').className = '';
+}
+
+function addLinhaProduto() {
+    const div = document.createElement('div');
+    div.className = 'item-cadastro-prod';
+    div.innerHTML = `
+        <input type="text" class="campo cad-p-nome" style="border:1px solid #ccc; margin:0" placeholder="Produto">
+        <input type="text" class="campo cad-p-preco" style="border:1px solid #ccc; margin:0; width:100px" placeholder="R$">
+    `;
+    document.getElementById('lista-produtos-cadastro').appendChild(div);
+}
+
+function enviarCadastro() {
+  const zapDono = "5512992448264";
+  const n = document.getElementById('cad-nome').value;
+  const l = document.getElementById('cad-loja').value;
+  if(!n || !l) return alert("Por favor, preencha seu nome e o nome da loja!");
+ 
+  let listaProdutos = "";
+  const nomesP = document.querySelectorAll('.cad-p-nome');
+  const precosP = document.querySelectorAll('.cad-p-preco');
+  nomesP.forEach((el, i) => {
+      if(el.value) listaProdutos += `- ${el.value}: R$ ${precosP[i].value}\n`;
+  });
+
+  let msg = `*SOLICITAÇÃO DE ANÚNCIO - LINK UP*\n\n`;
+  msg += `*Nome:* ${n}\n*Loja:* ${l}\n`;
+  msg += `*Endereço:* ${document.getElementById('cad-end').value}\n`;
+  msg += `*Horários:* ${document.getElementById('cad-seg-sex').value} (Seg-Sex), ${document.getElementById('cad-sab').value} (Sáb), ${document.getElementById('cad-dom').value} (Dom)\n`;
+  msg += `*Taxa:* ${document.getElementById('cad-taxa').value}\n\n`;
+  msg += `*LISTA DE PRODUTOS:*\n${listaProdutos}\n`;
+  msg += `*Obs:* ${document.getElementById('cad-obs').value}`;
+ 
+  window.open(`https://wa.me/${zapDono}?text=${encodeURIComponent(msg)}`);
+  fecharModal();
+}
 
 async function carregar() {
   const rL = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRBmwx-MDLLTuHAbXQ1hYO5GWZ05CsGqgCXtFmc_BWsFf0FCnR-17iEvtxQejGdOkdBy76V0L6whoC2/pub?gid=0&output=csv&t="+Date.now());
@@ -101,14 +220,21 @@ async function carregar() {
   const limpar = (r) => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, ''));
   lojas = tL.split(/\r?\n/).slice(1).map(limpar).filter(l => l.length > 5).sort(() => Math.random() - 0.5);
   produtos = tP.split(/\r?\n/).slice(1).map(limpar);
+ 
   banners = lojas.map(l => l[10]).filter(b => b && b.includes("http"));
   if(banners.length) {
-    const imgB = document.getElementById('bannerImg');
-    imgB.src = banners[0];
+    const wrapper = document.getElementById('bannerWrapper');
+    wrapper.innerHTML = '';
+    banners.forEach(url => {
+      const img = document.createElement('img');
+      img.src = url;
+      wrapper.appendChild(img);
+    });
+
     setInterval(() => {
       bIdx = (bIdx + 1) % banners.length;
-      imgB.style.opacity = 0.5;
-      setTimeout(() => { imgB.src = banners[bIdx]; imgB.style.opacity = 1; }, 200);
+      const deslocamento = bIdx * 100;
+      wrapper.style.transform = `translateX(-${deslocamento}%)`;
     }, 4000);
   }
   renderizarLojas(lojas);
@@ -164,7 +290,6 @@ function alternarMetodo(v) {
   document.getElementById('div-retirada').className = (v === 'Retirada') ? '' : 'escondido';
   if(v === 'Retirada') {
     document.getElementById('endLojaTxt').innerText = endLoja;
-    // Ajuste aqui: espera a div aparecer para carregar o mapa
     setTimeout(carregarMapa, 300);
   }
   atualizarResumo();
@@ -231,207 +356,5 @@ carregar();
 </script>
 </body>
 </html>
-
- 
-
-
- 
-
- 
-
- 
-
- 
-
- 
-
-
- 
-
-
- 
-
- 
-
- 
-
- 
-
- 
-
- 
-
- 
-
-
- 
-
- 
-
-
- 
-
-
- 
-
-
- 
-
-
- 
-
-
- 
-
-
-
- 
-
- 
-
- 
-
- 
-
-
- 
-
- 
-
- 
-
-
- 
-
- 
-
- 
-
-
-
- 
-
-
- 
-
- 
-
-
- 
-
- 
-
-
- 
-
- 
-
-
- 
-
-
- 
-
-
- 
-
- 
-
-
- 
-
-
- 
-
- 
-
-
-
- 
-
-
- 
-
-
- 
-
-
- 
-
-
-
-
- 
-
-
-
-
- 
-
- 
-
-
- 
-
- 
-
-
-
- 
-
- 
-
-
-
- 
-
-
-
- 
-
- 
-
-
- 
-
- 
-
- 
-
-
- 
-
- 
-
-
- 
-
- 
-
-
- 
-
- 
-
- 
-
-
- 
-
-
- 
-
- 
-
-
- 
-
-
- 
-
- 
-
- 
-
 
  
